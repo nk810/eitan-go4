@@ -1,0 +1,240 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>エイタンGO - 完全版</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#4fc3f7" />
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to bottom, #d0f0ff, #ffffff);
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+      color: #333;
+    }
+    .card {
+      background-color: white;
+      border-radius: 20px;
+      padding: 30px;
+      max-width: 450px;
+      margin: auto;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      animation: fadeIn 0.6s ease;
+    }
+    @keyframes fadeIn {
+      from {opacity: 0; transform: translateY(20px);}
+      to {opacity: 1; transform: translateY(0);}
+    }
+    button {
+      padding: 12px 24px;
+      margin: 10px auto;
+      border: none;
+      border-radius: 30px;
+      background-color: #4fc3f7;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #039be5;
+    }
+    .option-btn {
+      display: block;
+      width: 80%;
+      background-color: #ba68c8;
+    }
+    .option-btn:hover {
+      background-color: #9c27b0;
+    }
+    .speaker {
+      background-color: #ffca28;
+      color: black;
+      margin-top: 5px;
+    }
+    .correct {
+      background-color: #66bb6a !important;
+    }
+    .incorrect {
+      background-color: #ef5350 !important;
+    }
+    .stars, .level, #badges {
+      margin-top: 10px;
+      font-size: 18px;
+    }
+    .stars { color: gold; }
+    .level { color: #009688; }
+    #badges { color: #ff5722; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>エイタンGO ✨</h2>
+    <div id="content" class="fade"></div>
+    <div id="stars" class="stars">⭐️×0</div>
+    <div id="level" class="level">レベル：1</div>
+    <div id="badges"></div>
+  </div>
+
+  <script>
+    const words = [
+      { word: "apple", meaning: "りんご", example: "I like to eat an apple." },
+      { word: "dog", meaning: "いぬ", example: "The dog is barking." },
+      { word: "school", meaning: "学校", example: "I go to school every day." },
+      { word: "book", meaning: "本", example: "I read a book at night." },
+      { word: "car", meaning: "車", example: "My father drives a car." },
+      { word: "teacher", meaning: "先生", example: "My teacher is kind." },
+      { word: "computer", meaning: "コンピューター", example: "I use a computer at home." },
+      { word: "chair", meaning: "いす", example: "I sit on the chair." },
+      { word: "pencil", meaning: "えんぴつ", example: "I write with a pencil." },
+      { word: "music", meaning: "音楽", example: "I like music." }
+    ];
+
+    let index = 0;
+    let quizScore = 0;
+    let totalStars = 0;
+    let level = 1;
+
+    function speak(text) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "en-US";
+      speechSynthesis.speak(utterance);
+    }
+
+    function showWord() {
+      const w = words[index];
+      document.getElementById('content').innerHTML = `
+        <h3>単語 ${index + 1} / ${words.length}</h3>
+        <p style="font-size: 24px;"><strong>${w.word}</strong></p>
+        <button class="speaker" onclick="speak('${w.word}')">🔊 発音を聞く</button>
+        <p>意味：<strong>${w.meaning}</strong></p>
+        <p>例文：<em>${w.example}</em></p>
+        <button onclick="nextWord()">次へ ➡️</button>
+      `;
+    }
+
+    function nextWord() {
+      index++;
+      if (index < words.length) {
+        showWord();
+      } else {
+        index = 0;
+        startQuiz();
+      }
+    }
+
+    function startQuiz() {
+      shuffle(words);
+      quizScore = 0;
+      showQuiz();
+    }
+
+    function showQuiz() {
+      const correct = words[index];
+      const options = [correct.meaning];
+      while (options.length < 4) {
+        const choice = words[Math.floor(Math.random() * words.length)].meaning;
+        if (!options.includes(choice)) options.push(choice);
+      }
+      shuffle(options);
+
+      document.getElementById('content').innerHTML = `
+        <h3>クイズ ${index + 1} / ${words.length}</h3>
+        <p>「${correct.word}」の意味は？</p>
+        <button class="speaker" onclick="speak('${correct.word}')">🔊 発音を聞く</button>
+        ${options.map(o => `<button class="option-btn" onclick="checkAnswer(this, '${o}')">${o}</button>`).join("")}
+      `;
+    }
+
+    function checkAnswer(button, selected) {
+      const correct = words[index].meaning;
+      const buttons = document.querySelectorAll(".option-btn");
+      buttons.forEach(btn => btn.disabled = true);
+
+      if (selected === correct) {
+        quizScore++;
+        totalStars++;
+        button.classList.add("correct");
+      } else {
+        button.classList.add("incorrect");
+        buttons.forEach(btn => {
+          if (btn.textContent === correct) btn.classList.add("correct");
+        });
+      }
+
+      updateStats();
+
+      setTimeout(() => {
+        index++;
+        if (index < words.length) {
+          showQuiz();
+        } else {
+          showResult();
+        }
+      }, 1000);
+    }
+
+    function showResult() {
+      let levelUpMsg = "";
+      if (quizScore >= 10) {
+        level++;
+        levelUpMsg = `<p>🎉 レベルアップ！新しいレベル：<strong>${level}</strong></p>`;
+      }
+
+      const badges = getBadges(quizScore);
+      const badgeHTML = badges.length > 0
+        ? `<p>🏅 称号: ${badges.join(" / ")}</p>`
+        : "";
+
+      document.getElementById('content').innerHTML = `
+        <h2>🎉 終了！</h2>
+        <p>あなたのスコア：<strong>${quizScore} / ${words.length}</strong></p>
+        ${levelUpMsg}
+        ${badgeHTML}
+        <button onclick="restart()">もう一度チャレンジ 🔁</button>
+      `;
+
+      updateStats();
+    }
+
+    function getBadges(score) {
+      const badges = [];
+      if (score >= 0) badges.push("🐣 はじめてバッジ");
+      if (score >= 5) badges.push("📝 えいたん見習い");
+      if (score >= 8) badges.push("💡 英単語マスター");
+      if (score === 10) badges.push("👑 英単語王");
+      return badges;
+    }
+
+    function restart() {
+      index = 0;
+      quizScore = 0;
+      showWord();
+    }
+
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+    }
+
+    function updateStats() {
+      document.getElementById('stars').textContent = `⭐️×${totalStars}`;
+      document.getElementById('level').textContent = `レベル：${level}`;
+    }
+
+    showWord();
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').then(reg => {
+        console.log('Service worker registered.', reg);
+      });
+    }
+  </script>
+</body>
+</html>
